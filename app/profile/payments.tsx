@@ -1,12 +1,6 @@
 import { Colors } from '@/constants/colors';
-import {
-  getAppointments,
-  getDoctorName,
-  getSpecialtyName,
-  getStatusConfig,
-  getTimeSlot,
-} from '@/services/appointment';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { getMyPayments } from '@/services/payment';
+import { Payment, PaymentStatus, PaymentStatusConfig } from '@/types/payment';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -21,33 +15,31 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type TabType = 'upcoming' | 'completed' | 'cancelled';
+type TabType = 'all' | 'success' | 'pending';
 
-const FETCH_THROTTLE_MS = 15000;
-let lastAppointmentsFetchTime = 0;
+const formatCurrency = (amount?: number) => {
+  if (!amount) return '0đ';
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(amount);
+};
 
-export default function AppointmentsScreen() {
+export default function PaymentsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('upcoming');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
-  const fetchAppointments = async (force = false) => {
-    const now = Date.now();
-    if (!force && now - lastAppointmentsFetchTime < FETCH_THROTTLE_MS) {
-      setLoading(false);
-      return;
-    }
-    lastAppointmentsFetchTime = now;
-    
+  const fetchPayments = async () => {
     setLoading(true);
     try {
-      const { data } = await getAppointments({ limit: 100 });
-      setAppointments(data || []);
+      const { data } = await getMyPayments({ limit: 100 });
+      setPayments(data || []);
     } catch (e) {
-      console.error('Error fetching appointments:', e);
-      setAppointments([]);
+      console.error(e);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -55,45 +47,44 @@ export default function AppointmentsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAppointments();
+      fetchPayments();
     }, [])
   );
 
-  const filteredAppointments = useMemo(() => {
-    const now = new Date();
-    return appointments.filter((apt) => {
-      const aptDate = new Date(apt.appointmentDate);
-      const status = apt.status?.toUpperCase() as AppointmentStatus;
+  const filteredPayments = useMemo(() => {
+    return payments.filter((payment) => {
+      const status = payment.status as PaymentStatus;
       switch (activeTab) {
-        case 'upcoming':
-          return aptDate >= now && status !== 'CANCELLED' && status !== 'COMPLETED';
-        case 'completed':
-          return status === 'COMPLETED';
-        case 'cancelled':
-          return status === 'CANCELLED';
+        case 'success':
+          return status === 'SUCCESS';
+        case 'pending':
+          return status === 'PENDING';
         default:
           return true;
       }
     });
-  }, [appointments, activeTab]);
+  }, [payments, activeTab]);
 
   const tabs = [
-    { key: 'upcoming' as TabType, label: 'Upcoming', icon: 'calendar-outline' },
-    { key: 'completed' as TabType, label: 'Completed', icon: 'checkmark-done-outline' },
-    { key: 'cancelled' as TabType, label: 'Cancelled', icon: 'close-circle-outline' },
+    { key: 'all' as TabType, label: 'All', icon: 'list-outline' },
+    { key: 'success' as TabType, label: 'Success', icon: 'checkmark-circle-outline' },
+    { key: 'pending' as TabType, label: 'Pending', icon: 'time-outline' },
   ];
 
-  const renderItem = ({ item, index }: { item: Appointment; index: number }) => {
-    const statusConfig = getStatusConfig(item.status);
-    const appointmentDate = new Date(item.appointmentDate);
-    const doctorName = getDoctorName(item);
-    const specialty = getSpecialtyName(item);
-    const timeSlotStr = getTimeSlot(item);
+  const renderItem = ({ item, index }: { item: Payment; index: number }) => {
+    const statusConfig = PaymentStatusConfig[item.status];
+    const paymentDate = new Date(item.createdAt);
+    const doctor = item.appointment?.doctor;
+    const doctorName = doctor?.user?.fullName
+      ? `${doctor.professionalTitle || ''} ${doctor.user.fullName}`.trim()
+      : 'Unknown Doctor';
+    const specialty = doctor?.primarySpecialty?.name || '';
+    const consultationFee = item.appointment?.consultationFee || 0;
 
     return (
       <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
         <Pressable
-          onPress={() => router.push(`/appointment/${item.id}`)}
+          onPress={() => router.push(`/payment/${item.id}`)}
           style={{
             backgroundColor: Colors.white,
             borderRadius: 20,
@@ -112,10 +103,20 @@ export default function AppointmentsScreen() {
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
+              alignItems: 'flex-start',
               marginBottom: 14,
             }}
           >
             <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: Colors.text.tertiary,
+                  marginBottom: 4,
+                }}
+              >
+                #{item.paymentCode}
+              </Text>
               <Text
                 style={{
                   fontSize: 16,
@@ -125,15 +126,17 @@ export default function AppointmentsScreen() {
               >
                 {doctorName}
               </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: Colors.text.secondary,
-                  marginTop: 2,
-                }}
-              >
-                {specialty}
-              </Text>
+              {specialty && (
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: Colors.text.secondary,
+                    marginTop: 2,
+                  }}
+                >
+                  {specialty}
+                </Text>
+              )}
             </View>
             <View
               style={{
@@ -141,9 +144,16 @@ export default function AppointmentsScreen() {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 20,
-                alignSelf: 'flex-start',
+                flexDirection: 'row',
+                alignItems: 'center',
               }}
             >
+              <Ionicons
+                name={statusConfig.icon as any}
+                size={14}
+                color={statusConfig.color}
+                style={{ marginRight: 4 }}
+              />
               <Text
                 style={{
                   fontSize: 11,
@@ -178,7 +188,7 @@ export default function AppointmentsScreen() {
                   fontWeight: '500',
                 }}
               >
-                {format(appointmentDate, 'dd MMM yyyy')}
+                {format(paymentDate, 'dd MMM yyyy')}
               </Text>
             </View>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
@@ -195,7 +205,7 @@ export default function AppointmentsScreen() {
                   fontWeight: '500',
                 }}
               >
-                {timeSlotStr}
+                {format(paymentDate, 'HH:mm')}
               </Text>
             </View>
           </View>
@@ -210,22 +220,19 @@ export default function AppointmentsScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons
-                name={
-                  item.examinationType === 'IN_PERSON'
-                    ? 'business-outline'
-                    : 'videocam-outline'
-                }
-                size={14}
-                color={Colors.text.tertiary}
+                name="wallet-outline"
+                size={16}
+                color={Colors.secondary[600]}
               />
               <Text
                 style={{
                   marginLeft: 6,
-                  fontSize: 12,
-                  color: Colors.text.tertiary,
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: Colors.secondary[600],
                 }}
               >
-                {item.examinationType === 'IN_PERSON' ? 'In-Person' : 'Online'}
+                {formatCurrency(consultationFee)}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -264,16 +271,31 @@ export default function AppointmentsScreen() {
           borderBottomColor: Colors.border.light,
         }}
       >
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: '700',
-            color: Colors.text.primary,
-            marginBottom: 16,
-          }}
-        >
-          My Appointments
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: Colors.background.secondary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.text.primary} />
+          </Pressable>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '700',
+              color: Colors.text.primary,
+            }}
+          >
+            Payment History
+          </Text>
+        </View>
 
         <View
           style={{
@@ -331,14 +353,14 @@ export default function AppointmentsScreen() {
       </Animated.View>
 
       <FlatList
-        data={filteredAppointments}
+        data={filteredPayments}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
-            onRefresh={() => fetchAppointments(true)}
+            onRefresh={fetchPayments}
             tintColor={Colors.primary[500]}
           />
         }
@@ -361,7 +383,7 @@ export default function AppointmentsScreen() {
               }}
             >
               <Ionicons
-                name="calendar-outline"
+                name="wallet-outline"
                 size={40}
                 color={Colors.neutral[400]}
               />
@@ -374,38 +396,24 @@ export default function AppointmentsScreen() {
                 marginBottom: 8,
               }}
             >
-              No {activeTab} appointments
+              No payments found
             </Text>
             <Text
               style={{
                 fontSize: 14,
                 color: Colors.text.tertiary,
                 textAlign: 'center',
+                paddingHorizontal: 40,
               }}
             >
-              {activeTab === 'upcoming'
-                ? 'Book an appointment to get started'
-                : `You don't have any ${activeTab} appointments`}
+              {activeTab === 'all'
+                ? 'Your payment history will appear here after you complete appointments'
+                : `No ${activeTab} payments found`}
             </Text>
-            {activeTab === 'upcoming' && (
-              <Pressable
-                onPress={() => router.push('/(tabs)/booking')}
-                style={{
-                  marginTop: 20,
-                  backgroundColor: Colors.primary[500],
-                  paddingHorizontal: 24,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                }}
-              >
-                <Text style={{ color: Colors.white, fontWeight: '600' }}>
-                  Book Appointment
-                </Text>
-              </Pressable>
-            )}
           </View>
         }
       />
     </View>
   );
 }
+

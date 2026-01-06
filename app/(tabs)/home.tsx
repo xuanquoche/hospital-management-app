@@ -22,6 +22,9 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const FETCH_THROTTLE_MS = 15000;
+let lastHomeFetchTime = 0;
+
 export default function HomeScreen() {
   const { user, fetchUserProfile } = useAuthStore();
   const router = useRouter();
@@ -32,14 +35,20 @@ export default function HomeScreen() {
   const [healthMetrics, setHealthMetrics] = useState<HealthMetrics>({});
   const [recentConsultations, setRecentConsultations] = useState<Consultation[]>([]);
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastHomeFetchTime < FETCH_THROTTLE_MS) {
+      return;
+    }
+    lastHomeFetchTime = now;
+    
     setLoading(true);
     try {
       const [appointmentsResult, metrics, consultations] = await Promise.all([
         getAppointments().catch(() => ({ data: [], total: 0 })),
         getHealthMetrics().catch(() => ({})),
         getRecentConsultations(3).catch(() => []),
-        fetchUserProfile().catch(() => {}),
+        fetchUserProfile(force).catch(() => {}),
       ]);
 
       const now = new Date();
@@ -206,7 +215,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={loading}
-            onRefresh={fetchData}
+            onRefresh={() => fetchData(true)}
             tintColor={Colors.primary[500]}
           />
         }

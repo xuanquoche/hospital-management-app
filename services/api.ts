@@ -4,17 +4,46 @@ import * as Storage from './storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.hospital-intelligence.xyz/api/v1';
 
+const REQUEST_DELAY_MS = 100;
+let lastRequestTime = 0;
+const requestQueue: Array<() => void> = [];
+let isProcessingQueue = false;
+
+const processQueue = () => {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+  isProcessingQueue = true;
+  
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  const delay = Math.max(0, REQUEST_DELAY_MS - timeSinceLastRequest);
+  
+  setTimeout(() => {
+    const next = requestQueue.shift();
+    if (next) {
+      lastRequestTime = Date.now();
+      next();
+    }
+    isProcessingQueue = false;
+    processQueue();
+  }, delay);
+};
+
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-// Request Interceptor: Attach Token
+// Request Interceptor: Attach Token & Queue Requests
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    await new Promise<void>((resolve) => {
+      requestQueue.push(resolve);
+      processQueue();
+    });
+    
     const token = await Storage.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,7 +64,7 @@ interface FailedQueueItem {
 let isRefreshing = false;
 let failedQueue: FailedQueueItem[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processFailedQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -99,12 +128,12 @@ api.interceptors.response.use(
 
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         
-        processQueue(null, accessToken);
+        processFailedQueue(null, accessToken);
         
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (err) {
-        processQueue(err, null);
+        processFailedQueue(err, null);
         // Logout user
         await Storage.removeToken();
         await Storage.removeItem('refresh_token');

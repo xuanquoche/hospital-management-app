@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-export default function ProfileLayout() {
+export default function PaymentLayout() {
   return (
     <>
       <StatusBar style="dark" />
@@ -12,9 +12,7 @@ export default function ProfileLayout() {
           contentStyle: { backgroundColor: 'white' },
         }}
       >
-        <Stack.Screen name="edit" />
-        <Stack.Screen name="medical" />
-        <Stack.Screen name="payments" />
+        <Stack.Screen name="[id]" />
       </Stack>
     </>
   );

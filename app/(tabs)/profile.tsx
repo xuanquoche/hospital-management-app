@@ -100,10 +100,10 @@ export default function ProfileScreen() {
   const { logout, user, patientProfile, fetchUserProfile } = useAuthStore();
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     setLoading(true);
     try {
-      await fetchUserProfile();
+      await fetchUserProfile(force);
     } catch (e) {
       console.error(e);
     } finally {
@@ -154,7 +154,7 @@ export default function ProfileScreen() {
         refreshControl={
           <RefreshControl
             refreshing={loading}
-            onRefresh={fetchData}
+            onRefresh={() => fetchData(true)}
             tintColor={Colors.primary[500]}
           />
         }
@@ -580,8 +580,16 @@ export default function ProfileScreen() {
                 marginLeft: 4,
               }}
             >
-              SETTINGS
+              PAYMENTS & SETTINGS
             </Text>
+            <MenuItem
+              icon="wallet-outline"
+              iconBgColor={Colors.secondary[100]}
+              iconColor={Colors.secondary[600]}
+              title="Payment History"
+              subtitle="View all transactions"
+              onPress={() => router.push('/profile/payments')}
+            />
             <MenuItem
               icon="language-outline"
               iconBgColor={Colors.primary[100]}

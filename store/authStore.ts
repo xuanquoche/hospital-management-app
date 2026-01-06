@@ -15,23 +15,26 @@ interface AuthState {
   patientProfile: PatientProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  lastFetchTime: number;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-  fetchUserProfile: () => Promise<void>;
+  fetchUserProfile: (force?: boolean) => Promise<void>;
   updateUser: (user: Partial<User>) => void;
   updatePatientProfile: (profile: Partial<PatientProfile>) => void;
 }
 
 const USER_STORAGE_KEY = 'user_data';
 const PATIENT_PROFILE_KEY = 'patient_profile';
+const FETCH_THROTTLE_MS = 10000;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   patientProfile: null,
   isLoading: true,
   isAuthenticated: false,
+  lastFetchTime: 0,
 
   login: async (credentials) => {
     const response = await api.post<LoginResponse>('/auth/login', credentials);
@@ -45,7 +48,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ user, isAuthenticated: true, isLoading: false });
 
-    get().fetchUserProfile();
+    get().fetchUserProfile(true);
   },
 
   register: async (data) => {
@@ -95,7 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       }
 
-      await get().fetchUserProfile();
+      await get().fetchUserProfile(true);
       set({ isAuthenticated: true });
     } catch {
       await Promise.all([
@@ -110,7 +113,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  fetchUserProfile: async () => {
+  fetchUserProfile: async (force = false) => {
+    const now = Date.now();
+    const { lastFetchTime } = get();
+    
+    if (!force && now - lastFetchTime < FETCH_THROTTLE_MS) {
+      return;
+    }
+
+    set({ lastFetchTime: now });
+
     try {
       const response = await api.get<UserMeResponse>('/users/me');
       const { user, profile } = response.data.data;

@@ -87,7 +87,7 @@ const TabItem: React.FC<TabItemProps> = ({
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 8,
+          paddingVertical: 4,
         },
         animatedStyle,
       ]}
@@ -97,9 +97,9 @@ const TabItem: React.FC<TabItemProps> = ({
           <LinearGradient
             colors={[Colors.primary[500], Colors.primary[600]]}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
               shadowColor: Colors.primary[500],
@@ -111,22 +111,22 @@ const TabItem: React.FC<TabItemProps> = ({
           >
             <Ionicons
               name={tabConfig.iconFocused}
-              size={24}
+              size={22}
               color={Colors.white}
             />
           </LinearGradient>
         ) : (
           <View
             style={{
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             <Ionicons
               name={tabConfig.icon}
-              size={24}
+              size={22}
               color={Colors.neutral[400]}
             />
           </View>
@@ -135,8 +135,8 @@ const TabItem: React.FC<TabItemProps> = ({
           <View
             style={{
               position: 'absolute',
-              top: isFocused ? 0 : 4,
-              right: isFocused ? 0 : 4,
+              top: isFocused ? -2 : 2,
+              right: isFocused ? -2 : 2,
               backgroundColor: Colors.error,
               borderRadius: 10,
               minWidth: 18,
@@ -191,8 +191,8 @@ export const CustomTabBar: React.FC<CustomTabBarProps> = ({
       style={{
         flexDirection: 'row',
         backgroundColor: Colors.white,
-        paddingBottom: Platform.OS === 'ios' ? insets.bottom : 12,
-        paddingTop: 8,
+        paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
+        paddingTop: 4,
         borderTopWidth: 1,
         borderTopColor: Colors.border.light,
         shadowColor: '#000',
