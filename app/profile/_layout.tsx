@@ -15,8 +15,9 @@ export default function ProfileLayout() {
         <Stack.Screen name="edit" />
         <Stack.Screen name="medical" />
         <Stack.Screen name="payments" />
+        <Stack.Screen name="language" />
+        <Stack.Screen name="settings" />
       </Stack>
     </>
   );
 }
-

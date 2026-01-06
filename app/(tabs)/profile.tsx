@@ -1,9 +1,11 @@
 import { Colors } from '@/constants/colors';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/store/authStore';
+import { LANGUAGES, useLanguageStore } from '@/store/languageStore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +19,7 @@ interface MenuItemProps {
   onPress?: () => void;
   showArrow?: boolean;
   danger?: boolean;
+  rightElement?: React.ReactNode;
 }
 
 const MenuItem: React.FC<MenuItemProps> = ({
@@ -28,6 +31,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
   onPress,
   showArrow = true,
   danger = false,
+  rightElement,
 }) => (
   <Pressable
     onPress={onPress}
@@ -82,7 +86,8 @@ const MenuItem: React.FC<MenuItemProps> = ({
         </Text>
       )}
     </View>
-    {showArrow && (
+    {rightElement}
+    {showArrow && !rightElement && (
       <Ionicons name="chevron-forward" size={20} color={Colors.neutral[400]} />
     )}
   </Pressable>
@@ -97,8 +102,16 @@ const calculateBMI = (height?: number, weight?: number) => {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { logout, user, patientProfile, fetchUserProfile } = useAuthStore();
+  const { language, loadLanguage } = useLanguageStore();
   const [loading, setLoading] = useState(false);
+
+  const currentLanguage = LANGUAGES.find((l) => l.code === language);
+
+  useEffect(() => {
+    loadLanguage();
+  }, []);
 
   const fetchData = async (force = false) => {
     setLoading(true);
@@ -119,12 +132,12 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Log Out',
+          text: t('profile.logout'),
           style: 'destructive',
           onPress: () => logout(),
         },
@@ -238,7 +251,7 @@ export default function ProfileScreen() {
                   fontSize: 14,
                 }}
               >
-                Edit Profile
+                {t('profile.editProfile')}
               </Text>
             </Pressable>
           </Animated.View>
@@ -275,7 +288,7 @@ export default function ProfileScreen() {
                     color: Colors.text.primary,
                   }}
                 >
-                  Health Overview
+                  {t('profile.healthOverview')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text
@@ -286,7 +299,7 @@ export default function ProfileScreen() {
                       marginRight: 4,
                     }}
                   >
-                    Edit
+                    {t('common.edit')}
                   </Text>
                   <Ionicons
                     name="chevron-forward"
@@ -344,7 +357,7 @@ export default function ProfileScreen() {
                       color: Colors.text.tertiary,
                     }}
                   >
-                    Height
+                    {t('profile.height')}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
@@ -390,7 +403,7 @@ export default function ProfileScreen() {
                       color: Colors.text.tertiary,
                     }}
                   >
-                    Weight
+                    {t('profile.weight')}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
@@ -426,7 +439,7 @@ export default function ProfileScreen() {
                       color: Colors.text.tertiary,
                     }}
                   >
-                    Blood Type
+                    {t('profile.bloodType')}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
@@ -462,7 +475,7 @@ export default function ProfileScreen() {
                       color: Colors.text.tertiary,
                     }}
                   >
-                    BMI
+                    {t('profile.bmi')}
                   </Text>
                 </View>
               </View>
@@ -485,7 +498,7 @@ export default function ProfileScreen() {
                   />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 12, color: '#92400E', fontWeight: '600' }}>
-                      Allergies
+                      {t('profile.allergies')}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#78350F' }}>
                       {patientProfile.allergies}
@@ -506,38 +519,38 @@ export default function ProfileScreen() {
                 marginLeft: 4,
               }}
             >
-              PERSONAL INFO
+              {t('profile.personalInfo')}
             </Text>
             <MenuItem
               icon="call-outline"
               iconBgColor={Colors.secondary[100]}
               iconColor={Colors.secondary[600]}
-              title="Phone Number"
-              subtitle={user?.phone || 'Not set'}
+              title={t('profile.phoneNumber')}
+              subtitle={user?.phone || t('common.notSet')}
               onPress={() => router.push('/profile/edit')}
             />
             <MenuItem
               icon="location-outline"
               iconBgColor={Colors.accent[100]}
               iconColor={Colors.accent[600]}
-              title="Address"
-              subtitle={user?.address || 'Not set'}
+              title={t('profile.address')}
+              subtitle={user?.address || t('common.notSet')}
               onPress={() => router.push('/profile/edit')}
             />
             <MenuItem
               icon="calendar-outline"
               iconBgColor={Colors.primary[100]}
               iconColor={Colors.primary[600]}
-              title="Date of Birth"
-              subtitle={user?.dateOfBirth || 'Not set'}
+              title={t('profile.dateOfBirth')}
+              subtitle={user?.dateOfBirth || t('common.notSet')}
               onPress={() => router.push('/profile/edit')}
             />
             <MenuItem
               icon="shield-checkmark-outline"
               iconBgColor="#E0E7FF"
               iconColor="#4F46E5"
-              title="Insurance Number"
-              subtitle={patientProfile?.healthInsuranceNumber || 'Not set'}
+              title={t('profile.insuranceNumber')}
+              subtitle={patientProfile?.healthInsuranceNumber || t('common.notSet')}
               onPress={() => router.push('/profile/medical')}
             />
           </Animated.View>
@@ -555,14 +568,14 @@ export default function ProfileScreen() {
                 marginLeft: 4,
               }}
             >
-              EMERGENCY CONTACT
+              {t('profile.emergencyContact')}
             </Text>
             <MenuItem
               icon="people-outline"
               iconBgColor="#FEE2E2"
               iconColor={Colors.error}
-              title="Emergency Contact"
-              subtitle={patientProfile?.emergencyContact || 'Not set'}
+              title={t('profile.emergencyContact')}
+              subtitle={patientProfile?.emergencyContact || t('common.notSet')}
               onPress={() => router.push('/profile/medical')}
             />
           </Animated.View>
@@ -580,35 +593,55 @@ export default function ProfileScreen() {
                 marginLeft: 4,
               }}
             >
-              PAYMENTS & SETTINGS
+              {t('profile.paymentsSettings')}
             </Text>
             <MenuItem
               icon="wallet-outline"
               iconBgColor={Colors.secondary[100]}
               iconColor={Colors.secondary[600]}
-              title="Payment History"
-              subtitle="View all transactions"
+              title={t('profile.paymentHistory')}
+              subtitle={t('profile.viewTransactions')}
               onPress={() => router.push('/profile/payments')}
             />
             <MenuItem
               icon="language-outline"
               iconBgColor={Colors.primary[100]}
               iconColor={Colors.primary[600]}
-              title="Language"
-              subtitle="English"
+              title={t('profile.language')}
+              onPress={() => router.push('/profile/language')}
+              rightElement={
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, marginRight: 4 }}>
+                    {currentLanguage?.flag}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: Colors.text.secondary,
+                      fontWeight: '500',
+                      marginRight: 8,
+                    }}
+                  >
+                    {currentLanguage?.nativeName}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={Colors.neutral[400]} />
+                </View>
+              }
             />
             <MenuItem
               icon="notifications-outline"
               iconBgColor="#E0E7FF"
               iconColor="#4F46E5"
-              title="Notifications"
-              subtitle="Enabled"
+              title={t('profile.notifications')}
+              subtitle={t('profile.enabled')}
+              onPress={() => router.push('/profile/settings')}
             />
             <MenuItem
               icon="help-circle-outline"
               iconBgColor={Colors.accent[100]}
               iconColor={Colors.accent[600]}
-              title="Help & Support"
+              title={t('profile.helpSupport')}
+              onPress={() => router.push('/(tabs)/chat')}
             />
           </Animated.View>
 
@@ -620,7 +653,7 @@ export default function ProfileScreen() {
               icon="log-out-outline"
               iconBgColor="#FEE2E2"
               iconColor={Colors.error}
-              title="Log Out"
+              title={t('profile.logout')}
               showArrow={false}
               danger
               onPress={handleLogout}

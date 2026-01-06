@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/authStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -8,11 +9,13 @@ import '../global.css';
 
 export default function RootLayout() {
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { loadLanguage } = useLanguageStore();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     checkAuth();
+    loadLanguage();
   }, []);
 
   useEffect(() => {
