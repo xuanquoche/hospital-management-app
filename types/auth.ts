@@ -7,6 +7,23 @@ export interface User {
   username?: string;
   phone?: string;
   address?: string;
+  dateOfBirth?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PatientProfile {
+  id: string;
+  userId: string;
+  height?: number;
+  weight?: number;
+  bloodType?: string;
+  allergies?: string;
+  medicalHistory?: string;
+  insuranceNumber?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
 }
 
 export interface AuthResponse {
@@ -22,6 +39,15 @@ export interface LoginResponse {
   data: AuthResponse;
 }
 
+export interface RegisterResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: {
+    user: User;
+  };
+}
+
 export interface RefreshTokenResponse {
   success: boolean;
   statusCode: number;
@@ -30,4 +56,23 @@ export interface RefreshTokenResponse {
     accessToken: string;
     refreshToken: string;
   };
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+}
+
+export interface UserProfileResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: User;
 }

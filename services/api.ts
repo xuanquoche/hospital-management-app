@@ -2,8 +2,7 @@ import { RefreshTokenResponse } from '@/types/auth';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import * as Storage from './storage';
 
-// Use env var or default
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.hospital-intelligence.xyz/api/v1';
 
 export const api = axios.create({
   baseURL: BASE_URL,
