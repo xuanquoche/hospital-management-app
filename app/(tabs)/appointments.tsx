@@ -1,11 +1,11 @@
 import { Colors } from '@/constants/colors';
 import {
-  getAppointments,
   getDoctorName,
   getSpecialtyName,
   getStatusConfig,
   getTimeSlot,
 } from '@/services/appointment';
+import { getMyAppointments } from '@/services/patient';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -15,13 +15,14 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type TabType = 'upcoming' | 'completed' | 'cancelled';
+type TabType = 'all' | 'upcoming' | 'completed' | 'cancelled';
 
 const FETCH_THROTTLE_MS = 15000;
 let lastAppointmentsFetchTime = 0;
@@ -31,7 +32,7 @@ export default function AppointmentsScreen() {
   const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('upcoming');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
   const fetchAppointments = async (force = false) => {
     const now = Date.now();
@@ -43,7 +44,7 @@ export default function AppointmentsScreen() {
     
     setLoading(true);
     try {
-      const { data } = await getAppointments({ limit: 100 });
+      const { data } = await getMyAppointments({ limit: 100 });
       setAppointments(data || []);
     } catch (e) {
       console.error('Error fetching appointments:', e);
@@ -65,6 +66,8 @@ export default function AppointmentsScreen() {
       const aptDate = new Date(apt.appointmentDate);
       const status = apt.status?.toUpperCase() as AppointmentStatus;
       switch (activeTab) {
+        case 'all':
+          return true;
         case 'upcoming':
           return aptDate >= now && status !== 'CANCELLED' && status !== 'COMPLETED';
         case 'completed':
@@ -78,6 +81,7 @@ export default function AppointmentsScreen() {
   }, [appointments, activeTab]);
 
   const tabs = [
+    { key: 'all' as TabType, label: 'All', icon: 'list-outline' },
     { key: 'upcoming' as TabType, label: 'Upcoming', icon: 'calendar-outline' },
     { key: 'completed' as TabType, label: 'Completed', icon: 'checkmark-done-outline' },
     { key: 'cancelled' as TabType, label: 'Cancelled', icon: 'close-circle-outline' },
@@ -275,24 +279,26 @@ export default function AppointmentsScreen() {
           My Appointments
         </Text>
 
-        <View
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={{
-            flexDirection: 'row',
             backgroundColor: Colors.background.secondary,
             borderRadius: 14,
             padding: 4,
           }}
+          contentContainerStyle={{ gap: 4, paddingRight: 4 }}
         >
           {tabs.map((tab) => (
             <Pressable
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
               style={{
-                flex: 1,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                paddingVertical: 10,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
                 borderRadius: 10,
                 backgroundColor:
                   activeTab === tab.key ? Colors.white : 'transparent',
@@ -305,17 +311,17 @@ export default function AppointmentsScreen() {
             >
               <Ionicons
                 name={tab.icon as any}
-                size={16}
+                size={14}
                 color={
                   activeTab === tab.key
                     ? Colors.primary[600]
                     : Colors.text.tertiary
                 }
-                style={{ marginRight: 6 }}
+                style={{ marginRight: 4 }}
               />
               <Text
                 style={{
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: '600',
                   color:
                     activeTab === tab.key
@@ -327,7 +333,7 @@ export default function AppointmentsScreen() {
               </Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       </Animated.View>
 
       <FlatList

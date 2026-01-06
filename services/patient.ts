@@ -1,3 +1,4 @@
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { PatientProfile } from '@/types/auth';
 import { Consultation, HealthMetrics } from '@/types/patient';
 import { api } from './api';
@@ -15,7 +16,7 @@ interface PaginatedResponse<T> {
   message: string;
   data: T[];
   meta: {
-    total: number;
+    totalItems: number;
     page: number;
     limit: number;
   };
@@ -38,6 +39,15 @@ export interface UpdatePatientData {
   chronicDisease?: string;
 }
 
+export interface MyAppointmentQueryParams {
+  page?: number;
+  limit?: number;
+  status?: AppointmentStatus;
+  startDate?: string;
+  endDate?: string;
+  doctorId?: string;
+}
+
 export const getPatientProfile = async (): Promise<PatientProfile | null> => {
   try {
     const response = await api.get<{
@@ -58,6 +68,34 @@ export const updatePatientProfile = async (
     data
   );
   return response.data.data;
+};
+
+export const getMyAppointments = async (
+  params?: MyAppointmentQueryParams
+): Promise<{ data: Appointment[]; total: number }> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.doctorId) queryParams.append('doctorId', params.doctorId);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `/patients/me/appointments?${queryString}`
+      : '/patients/me/appointments';
+
+    const response = await api.get<PaginatedResponse<Appointment>>(url);
+    return {
+      data: response.data.data || [],
+      total: response.data.meta?.totalItems || 0,
+    };
+  } catch (error) {
+    console.error('Error fetching my appointments:', error);
+    return { data: [], total: 0 };
+  }
 };
 
 export const getHealthMetrics = async (): Promise<HealthMetrics> => {

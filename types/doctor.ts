@@ -3,11 +3,12 @@ import { Specialty } from './specialty';
 export interface Doctor {
   id: string;
   userId: string;
+  name?: string;
   professionalTitle?: string;
   bio?: string;
   yearsOfExperience?: number;
   consultationFee?: number;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   user?: {
     id: string;
     fullName?: string;
@@ -15,6 +16,7 @@ export interface Doctor {
     phone?: string;
     avatar?: string;
   };
+  specialty?: Specialty;
   primarySpecialty?: Specialty;
   subSpecialties?: Specialty[];
   education?: DoctorEducation[];

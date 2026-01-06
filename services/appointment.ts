@@ -19,7 +19,7 @@ interface PaginatedResponse<T> {
   message: string;
   data: T[];
   meta: {
-    total: number;
+    totalItems: number;
     page: number;
     limit: number;
   };
@@ -51,7 +51,7 @@ export const getAppointments = async (
     );
     return {
       data: response.data.data || [],
-      total: response.data.meta?.total || 0,
+      total: response.data.meta?.totalItems || 0,
     };
   } catch (error) {
     console.error('Error fetching appointments:', error);
@@ -96,12 +96,12 @@ export const cancelAppointment = async (
 
 export const getDoctorName = (appointment: Appointment): string => {
   const title = appointment.doctor?.professionalTitle || '';
-  const name = appointment.doctor?.user?.fullName || 'Unknown Doctor';
+  const name = appointment.doctor?.name || appointment.doctor?.user?.fullName || 'Unknown Doctor';
   return title ? `${title} ${name}` : name;
 };
 
 export const getSpecialtyName = (appointment: Appointment): string => {
-  return appointment.doctor?.primarySpecialty?.name || 'General';
+  return appointment.doctor?.specialty?.name || appointment.doctor?.primarySpecialty?.name || 'General';
 };
 
 export const getTimeSlot = (appointment: Appointment): string => {

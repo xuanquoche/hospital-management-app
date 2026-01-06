@@ -3,8 +3,7 @@ import { HealthMetricsCard } from '@/components/dashboard/HealthMetricsCard';
 import { QuickActionCard } from '@/components/dashboard/QuickActionCard';
 import { RecentHistoryCard } from '@/components/dashboard/RecentHistoryCard';
 import { Colors } from '@/constants/colors';
-import { getAppointments } from '@/services/appointment';
-import { getHealthMetrics, getRecentConsultations } from '@/services/patient';
+import { getHealthMetrics, getMyAppointments, getRecentConsultations } from '@/services/patient';
 import { useAuthStore } from '@/store/authStore';
 import { Appointment } from '@/types/appointment';
 import { Consultation, HealthMetrics } from '@/types/patient';
@@ -45,7 +44,7 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const [appointmentsResult, metrics, consultations] = await Promise.all([
-        getAppointments().catch(() => ({ data: [], total: 0 })),
+        getMyAppointments().catch(() => ({ data: [], total: 0 })),
         getHealthMetrics().catch(() => ({})),
         getRecentConsultations(3).catch(() => []),
         fetchUserProfile(force).catch(() => {}),
@@ -53,9 +52,10 @@ export default function HomeScreen() {
 
       const now = new Date();
       const appointments = appointmentsResult?.data || [];
-      const futureAppointments = appointments.filter(
-        (a) => new Date(a.appointmentDate) >= now && a.status !== 'CANCELLED'
-      );
+      const futureAppointments = appointments.filter((a) => {
+        const aptDate = new Date(a.appointmentDate);
+        return aptDate >= now && a.status !== 'CANCELLED';
+      });
       futureAppointments.sort(
         (a, b) =>
           new Date(a.appointmentDate).getTime() -
