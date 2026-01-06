@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   email: string;
-  fullName: string;
+  fullName?: string;
   role: string;
   avatar?: string;
   username?: string;
@@ -9,6 +9,7 @@ export interface User {
   address?: string;
   dateOfBirth?: string;
   gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -21,9 +22,12 @@ export interface PatientProfile {
   bloodType?: string;
   allergies?: string;
   medicalHistory?: string;
-  insuranceNumber?: string;
+  healthInsuranceNumber?: string;
   emergencyContact?: string;
-  emergencyPhone?: string;
+  identityNumber?: string;
+  chronicDisease?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthResponse {
@@ -70,9 +74,12 @@ export interface RegisterData {
   phone?: string;
 }
 
-export interface UserProfileResponse {
+export interface UserMeResponse {
   success: boolean;
   statusCode: number;
   message: string;
-  data: User;
+  data: {
+    user: User;
+    profile: PatientProfile | null;
+  };
 }

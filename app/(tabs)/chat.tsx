@@ -1,68 +1,294 @@
+import { Colors } from '@/constants/colors';
 import { useConversations } from '@/hooks/useConversations';
 import { Conversation } from '@/types/conversation';
+import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Text,
+  View,
+} from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatListScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { conversations, loading, refetch } = useConversations();
 
-  const renderItem = ({ item }: { item: Conversation }) => (
-    <TouchableOpacity
-      className="bg-white p-4 border-b border-gray-100 flex-row items-center"
-      onPress={() => router.push(`/chat/${item.id}`)}
-    >
-      <View className="h-12 w-12 bg-blue-100 rounded-full items-center justify-center mr-3">
-        <Text className="text-blue-600 font-bold text-lg">
-            {item.patient.name?.[0] || 'D'}
-        </Text>
-      </View>
-      <View className="flex-1">
-        <View className="flex-row justify-between mb-1">
-             <Text className="font-bold text-gray-800 text-base">Doctor Support</Text>
-             {item.lastMessageAt && (
-                 <Text className="text-xs text-gray-400">
-                    {formatDistanceToNow(new Date(item.lastMessageAt), { addSuffix: true })}
-                 </Text>
-             )}
+  const renderItem = ({ item, index }: { item: Conversation; index: number }) => (
+    <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
+      <Pressable
+        onPress={() => router.push(`/chat/${item.id}`)}
+        style={{
+          backgroundColor: Colors.white,
+          paddingHorizontal: 20,
+          paddingVertical: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: Colors.border.light,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+      >
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            backgroundColor: Colors.primary[100],
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 14,
+          }}
+        >
+          <Ionicons
+            name="chatbubble-ellipses"
+            size={26}
+            color={Colors.primary[600]}
+          />
         </View>
-        <Text className="text-gray-500 text-sm" numberOfLines={1}>
-            {item.lastMessage?.content || 'No messages yet'}
-        </Text>
-      </View>
-      {item.unreadCount ? (
-          <View className="bg-red-500 rounded-full h-5 w-5 items-center justify-center ml-2">
-              <Text className="text-white text-xs font-bold">{item.unreadCount}</Text>
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 4,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: Colors.text.primary,
+              }}
+            >
+              Support Chat
+            </Text>
+            {item.lastMessageAt && (
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: Colors.text.tertiary,
+                }}
+              >
+                {formatDistanceToNow(new Date(item.lastMessageAt), {
+                  addSuffix: true,
+                })}
+              </Text>
+            )}
           </View>
-      ) : null}
-    </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                color: item.unreadCount
+                  ? Colors.text.primary
+                  : Colors.text.tertiary,
+                fontWeight: item.unreadCount ? '500' : '400',
+                flex: 1,
+                marginRight: 10,
+              }}
+              numberOfLines={1}
+            >
+              {item.lastMessage?.content || 'No messages yet'}
+            </Text>
+            {item.unreadCount ? (
+              <View
+                style={{
+                  backgroundColor: Colors.primary[500],
+                  borderRadius: 12,
+                  minWidth: 24,
+                  height: 24,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: '700',
+                  }}
+                >
+                  {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={Colors.neutral[400]}
+          style={{ marginLeft: 8 }}
+        />
+      </Pressable>
+    </Animated.View>
   );
 
-  if (loading) {
-      return (
-          <View className="flex-1 items-center justify-center">
-              <ActivityIndicator />
-          </View>
-      );
+  if (loading && conversations.length === 0) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: Colors.white,
+        }}
+      >
+        <ActivityIndicator size="large" color={Colors.primary[500]} />
+      </View>
+    );
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="p-4 border-b border-gray-200">
-          <Text className="text-2xl font-bold text-gray-800">Messages</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: Colors.white }}>
+      <Animated.View
+        entering={FadeInUp.duration(400)}
+        style={{
+          paddingTop: insets.top + 10,
+          paddingHorizontal: 20,
+          paddingBottom: 16,
+          backgroundColor: Colors.white,
+          borderBottomWidth: 1,
+          borderBottomColor: Colors.border.light,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <View>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: Colors.text.primary,
+              }}
+            >
+              Messages
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: Colors.text.tertiary,
+                marginTop: 2,
+              }}
+            >
+              Chat with our support team
+            </Text>
+          </View>
+          <Pressable
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: Colors.primary[500],
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="create-outline" size={22} color={Colors.white} />
+          </Pressable>
+        </View>
+      </Animated.View>
+
       <FlatList
         data={conversations}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        refreshing={loading}
-        onRefresh={refetch}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refetch}
+            tintColor={Colors.primary[500]}
+          />
+        }
         ListEmptyComponent={
-            <View className="p-10 items-center">
-                <Text className="text-gray-400">No conversations yet.</Text>
+          <View
+            style={{
+              paddingVertical: 80,
+              alignItems: 'center',
+              paddingHorizontal: 40,
+            }}
+          >
+            <View
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 30,
+                backgroundColor: Colors.primary[100],
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 24,
+              }}
+            >
+              <Ionicons
+                name="chatbubbles-outline"
+                size={50}
+                color={Colors.primary[500]}
+              />
             </View>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: '700',
+                color: Colors.text.primary,
+                marginBottom: 8,
+              }}
+            >
+              No Conversations Yet
+            </Text>
+            <Text
+              style={{
+                fontSize: 15,
+                color: Colors.text.tertiary,
+                textAlign: 'center',
+                lineHeight: 22,
+              }}
+            >
+              Start a conversation with our support team for any questions or
+              assistance
+            </Text>
+            <Pressable
+              style={{
+                marginTop: 24,
+                backgroundColor: Colors.primary[500],
+                paddingHorizontal: 28,
+                paddingVertical: 14,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Ionicons
+                name="add"
+                size={20}
+                color={Colors.white}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                style={{ color: Colors.white, fontWeight: '600', fontSize: 15 }}
+              >
+                New Conversation
+              </Text>
+            </Pressable>
+          </View>
         }
       />
     </View>

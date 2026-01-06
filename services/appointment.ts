@@ -1,45 +1,69 @@
 import { api } from './api';
-// Actually I don't have types/appointment-api.ts in mobile yet. I only read it in web.
-// I should create types/appointment.ts in mobile.
 
 export interface Appointment {
   id: string;
   appointmentDate: string;
   status: string;
-  doctor: {
-      id: string;
-      professionalTitle: string;
-      user: {
-          fullName: string;
-      };
-      primarySpecialty: {
-          name: string;
-      }
+  doctor?: {
+    id: string;
+    professionalTitle?: string;
+    user?: {
+      fullName?: string;
+    };
+    primarySpecialty?: {
+      name?: string;
+    };
   };
-  timeSlot: {
-      startTime: string;
-      endTime: string;
+  timeSlot?: {
+    startTime?: string;
+    endTime?: string;
   };
-  examinationType: string;
+  examinationType?: string;
 }
 
-export const getAppointments = async () => {
-    // Check web endpoint: likely GET /appointments/me or /patients/appointments
-    // Web: `admin-appointments`... 
-    // Patient flow: `useAppointmentList`? 
-    // I'll guess /appointments or /patients/appointments based on chat endpoint being /patients/conversations
-    // Let's assume /patients/appointments or /appointments/my-appointments
-    // Standard based on `fetcher`: `/patients/appointments`?
-    // Let's try /patients/appointments or /appointments
-    // Web usage: `clientFetcher.get('/appointments/me')` or similar.
-    // I will guess `/appointments` with user context.
-    // Actually, let's use `/appointments` and hope backend filters by user.
-    // Or `/patients/me/appointments`.
-    // Safest bet: `/appointments`
-    const response = await api.get<{ data: Appointment[] }>('/appointments');
-    return response.data.data;
+interface ApiResponse<T> {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
+export const getAppointments = async (): Promise<Appointment[]> => {
+  try {
+    const response = await api.get<ApiResponse<Appointment[]>>('/appointments');
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    return [];
+  }
 };
 
-export const cancelAppointment = async (id: string, reason: string) => {
-    await api.patch(`/appointments/${id}/cancel`, { reason });
+export const getAppointmentById = async (id: string): Promise<Appointment | null> => {
+  try {
+    const response = await api.get<ApiResponse<Appointment>>(`/appointments/${id}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching appointment:', error);
+    return null;
+  }
+};
+
+export const cancelAppointment = async (id: string, reason?: string): Promise<void> => {
+  await api.patch(`/appointments/${id}/cancel`, { reason });
+};
+
+export const getDoctorName = (appointment: Appointment): string => {
+  const title = appointment.doctor?.professionalTitle || '';
+  const name = appointment.doctor?.user?.fullName || 'Unknown Doctor';
+  return title ? `${title} ${name}` : name;
+};
+
+export const getSpecialtyName = (appointment: Appointment): string => {
+  return appointment.doctor?.primarySpecialty?.name || 'General';
+};
+
+export const getTimeSlot = (appointment: Appointment): string => {
+  const start = appointment.timeSlot?.startTime || '00:00';
+  const end = appointment.timeSlot?.endTime || '00:00';
+  return `${start} - ${end}`;
 };

@@ -1,6 +1,6 @@
 import { api } from '@/services/api';
 import { Conversation, Message } from '@/types/conversation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useChatSocket } from './useChatSocket';
 
 export const useConversations = () => {
@@ -19,14 +19,18 @@ export const useConversations = () => {
   }, []);
 
   useChatSocket({
-      onConversationUpdate: fetchConversations
+    onConversationUpdate: fetchConversations,
   });
 
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
 
-  return { conversations, loading, refetch: fetchConversations };
+  const unreadCount = useMemo(() => {
+    return conversations.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0);
+  }, [conversations]);
+
+  return { conversations, loading, refetch: fetchConversations, unreadCount };
 };
 
 export const useMessages = (conversationId: string) => {
@@ -36,18 +40,20 @@ export const useMessages = (conversationId: string) => {
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     try {
-      const res = await api.get(`/patients/conversations/${conversationId}/messages?limit=50`);
-      setMessages(res.data.data.reverse()); // API returns desc, we want asc for chat
+      const res = await api.get(
+        `/patients/conversations/${conversationId}/messages?limit=50`
+      );
+      setMessages(res.data.data.reverse());
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   }, [conversationId]);
-  
+
   const { sendMessage: socketSendMessage } = useChatSocket({
-      conversationId,
-      onNewMessage: (msg) => setMessages(prev => [...prev, msg])
+    conversationId,
+    onNewMessage: (msg) => setMessages((prev) => [...prev, msg]),
   });
 
   useEffect(() => {
@@ -55,14 +61,13 @@ export const useMessages = (conversationId: string) => {
   }, [fetchMessages]);
 
   const sendMessage = async (content: string) => {
-      // Optimistic update could go here
-      try {
-        const msg = await socketSendMessage(content);
-        setMessages(prev => [...prev, msg]);
-      } catch (e) {
-          console.error(e);
-          throw e;
-      }
+    try {
+      const msg = await socketSendMessage(content);
+      setMessages((prev) => [...prev, msg]);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   };
 
   return { messages, loading, sendMessage };

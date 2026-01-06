@@ -1,132 +1,383 @@
+import { AppointmentCard } from '@/components/dashboard/AppointmentCard';
+import { HealthMetricsCard } from '@/components/dashboard/HealthMetricsCard';
+import { QuickActionCard } from '@/components/dashboard/QuickActionCard';
+import { RecentHistoryCard } from '@/components/dashboard/RecentHistoryCard';
+import { Colors } from '@/constants/colors';
 import { Appointment, getAppointments } from '@/services/appointment';
+import { getHealthMetrics, getRecentConsultations } from '@/services/patient';
 import { useAuthStore } from '@/store/authStore';
+import { Consultation, HealthMetrics } from '@/types/patient';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const { user } = useAuthStore();
+  const { user, fetchUserProfile } = useAuthStore();
   const router = useRouter();
-  const [upcoming, setUpcoming] = useState<Appointment | null>(null);
+  const insets = useSafeAreaInsets();
+
   const [loading, setLoading] = useState(false);
+  const [upcoming, setUpcoming] = useState<Appointment | null>(null);
+  const [healthMetrics, setHealthMetrics] = useState<HealthMetrics>({});
+  const [recentConsultations, setRecentConsultations] = useState<Consultation[]>([]);
 
   const fetchData = async () => {
-      setLoading(true);
-      try {
-          const apps = await getAppointments();
-          // Filter for future and sort
-          const now = new Date();
-          const future = apps.filter(a => new Date(a.appointmentDate) >= now && a.status !== 'CANCELLED');
-          future.sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime());
-          setUpcoming(future[0] || null);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setLoading(false);
-      }
+    setLoading(true);
+    try {
+      const [appointments, metrics, consultations] = await Promise.all([
+        getAppointments().catch(() => []),
+        getHealthMetrics().catch(() => ({})),
+        getRecentConsultations(3).catch(() => []),
+        fetchUserProfile().catch(() => {}),
+      ]);
+
+      const now = new Date();
+      const futureAppointments = (appointments || []).filter(
+        (a) => new Date(a.appointmentDate) >= now && a.status !== 'CANCELLED'
+      );
+      futureAppointments.sort(
+        (a, b) =>
+          new Date(a.appointmentDate).getTime() -
+          new Date(b.appointmentDate).getTime()
+      );
+      setUpcoming(futureAppointments[0] || null);
+      setHealthMetrics(metrics || {});
+      setRecentConsultations(consultations || []);
+    } catch (e) {
+      console.error('Error fetching data:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useFocusEffect(
-      useCallback(() => {
-          fetchData();
-      }, [])
+    useCallback(() => {
+      fetchData();
+    }, [])
   );
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getDisplayName = () => {
+    if (user?.fullName) return user.fullName;
+    if (user?.email) return user.email.split('@')[0];
+    return 'there';
+  };
+
+  const getInitial = () => {
+    if (user?.fullName) return user.fullName.charAt(0).toUpperCase();
+    if (user?.email) return user.email.charAt(0).toUpperCase();
+    return 'U';
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView 
-        contentContainerStyle={{ padding: 20 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />}
+    <View style={{ flex: 1, backgroundColor: Colors.background.secondary }}>
+      <LinearGradient
+        colors={[Colors.primary[500], Colors.primary[600]]}
+        style={{
+          paddingTop: insets.top,
+          paddingHorizontal: 20,
+          paddingBottom: 80,
+          borderBottomLeftRadius: 30,
+          borderBottomRightRadius: 30,
+        }}
       >
-        <View className="flex-row justify-between items-center mb-6 mt-4">
-            <View>
-                <Text className="text-gray-500 text-base">Welcome back,</Text>
-                <Text className="text-2xl font-bold text-gray-800">{user?.fullName || 'Patient'}</Text>
-            </View>
-            <TouchableOpacity 
-                className="bg-white p-2 rounded-full shadow-sm"
-                onPress={() => router.push('/(tabs)/profile')}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 10,
+          }}
+        >
+          <View>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>
+              {getGreeting()} 👋
+            </Text>
+            <Text
+              style={{
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: '700',
+                marginTop: 4,
+              }}
             >
-                {/* Avatar Placeholder */}
-                <View className="h-10 w-10 bg-blue-100 rounded-full items-center justify-center">
-                    <Text className="text-blue-600 font-bold">{user?.fullName?.[0] || 'U'}</Text>
-                </View>
-            </TouchableOpacity>
+              {getDisplayName()}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+              }}
+            >
+              <Ionicons name="notifications-outline" size={22} color={Colors.white} />
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: Colors.error,
+                }}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile')}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: Colors.white,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
+                style={{
+                  color: Colors.primary[600],
+                  fontSize: 18,
+                  fontWeight: '700',
+                }}
+              >
+                {getInitial()}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Quick Actions */}
-        <Text className="font-bold text-gray-800 text-lg mb-3">Quick Actions</Text>
-        <View className="flex-row justify-between mb-8">
-            <TouchableOpacity 
-                className="bg-blue-600 p-4 rounded-xl flex-1 mr-3 items-center justify-center shadow-sm"
-                onPress={() => router.push('/(tabs)/booking')}
-            >
-                <Ionicons name="calendar" size={24} color="white" className="mb-2" />
-                <Text className="text-white font-bold">Book Now</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-                className="bg-teal-500 p-4 rounded-xl flex-1 ml-3 items-center justify-center shadow-sm"
-                onPress={() => router.push('/(tabs)/chat')}
-            >
-                <Ionicons name="chatbubbles" size={24} color="white" className="mb-2" />
-                <Text className="text-white font-bold">Chat Support</Text>
-            </TouchableOpacity>
-        </View>
+        <Pressable
+          onPress={() => router.push('/(tabs)/booking')}
+          style={{
+            marginTop: 20,
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color="rgba(255,255,255,0.7)"
+          />
+          <Text
+            style={{
+              marginLeft: 12,
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 15,
+            }}
+          >
+            Search doctors, specialties...
+          </Text>
+        </Pressable>
+      </LinearGradient>
 
-        {/* Upcoming Appointment */}
-        <View className="flex-row justify-between items-center mb-3">
-             <Text className="font-bold text-gray-800 text-lg">Upcoming Appointment</Text>
-             <TouchableOpacity onPress={() => router.push('/(tabs)/appointments')}>
-                 <Text className="text-blue-600 font-medium">See All</Text>
-             </TouchableOpacity>
-        </View>
+      <ScrollView
+        style={{ flex: 1, marginTop: -50 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={fetchData}
+            tintColor={Colors.primary[500]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '700',
+              color: Colors.text.primary,
+              marginBottom: 14,
+            }}
+          >
+            Quick Actions
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            <QuickActionCard
+              icon="calendar"
+              title="Book Appointment"
+              subtitle="Find a doctor"
+              colors={[Colors.primary[500], Colors.primary[600]]}
+              onPress={() => router.push('/(tabs)/booking')}
+            />
+            <QuickActionCard
+              icon="sparkles"
+              title="AI Consult"
+              subtitle="Get recommendations"
+              colors={[Colors.secondary[500], Colors.secondary[600]]}
+              onPress={() => router.push('/(tabs)/chat')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            <QuickActionCard
+              icon="document-text"
+              title="Health Records"
+              subtitle="View history"
+              colors={[Colors.accent[500], Colors.accent[600]]}
+              onPress={() => router.push('/(tabs)/appointments')}
+            />
+            <QuickActionCard
+              icon="chatbubbles"
+              title="Support Chat"
+              subtitle="Get help"
+              colors={['#8B5CF6', '#7C3AED']}
+              onPress={() => router.push('/(tabs)/chat')}
+            />
+          </View>
+        </Animated.View>
 
-        {upcoming ? (
-            <View className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-                <View className="flex-row justify-between items-start mb-3">
-                    <View>
-                        <Text className="font-bold text-lg text-gray-800">{upcoming.doctor.user.fullName}</Text>
-                        <Text className="text-gray-500">{upcoming.doctor.primarySpecialty.name}</Text>
-                    </View>
-                    <View className="bg-blue-100 px-3 py-1 rounded-full">
-                         <Text className="text-blue-700 font-bold text-xs">CONFIRMED</Text>
-                    </View>
-                </View>
-                
-                <View className="flex-row items-center mb-2">
-                    <Ionicons name="time-outline" size={18} color="#666" className="mr-2" />
-                    <Text className="text-gray-600 ml-2">
-                        {format(new Date(upcoming.appointmentDate), 'EEEE, d MMMM yyyy')}
-                    </Text>
-                </View>
-                <View className="flex-row items-center">
-                    <Ionicons name="alarm-outline" size={18} color="#666" className="mr-2" />
-                    <Text className="text-gray-600 ml-2">
-                        {upcoming.timeSlot.startTime} - {upcoming.timeSlot.endTime}
-                    </Text>
-                </View>
-                
-                <TouchableOpacity className="mt-4 bg-gray-50 py-3 rounded-xl border border-gray-200 items-center">
-                    <Text className="font-medium text-gray-700">View Details</Text>
-                </TouchableOpacity>
-            </View>
-        ) : (
-            <View className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 items-center">
-                <Ionicons name="calendar-outline" size={48} color="#ccc" className="mb-3" />
-                <Text className="text-gray-500 font-medium">No upcoming appointments</Text>
-                <TouchableOpacity 
-                    className="mt-4"
-                    onPress={() => router.push('/(tabs)/booking')}
-                >
-                    <Text className="text-blue-600 font-bold">Book an appointment</Text>
-                </TouchableOpacity>
-            </View>
-        )}
+        <Animated.View entering={FadeInDown.duration(400).delay(200)}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: Colors.text.primary,
+              }}
+            >
+              Upcoming Appointment
+            </Text>
+            <Pressable onPress={() => router.push('/(tabs)/appointments')}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: Colors.primary[600],
+                }}
+              >
+                See All
+              </Text>
+            </Pressable>
+          </View>
+
+          {upcoming ? (
+            <AppointmentCard
+              appointment={upcoming}
+              onViewDetails={() => router.push('/(tabs)/appointments')}
+            />
+          ) : (
+            <Pressable
+              onPress={() => router.push('/(tabs)/booking')}
+              style={{
+                backgroundColor: Colors.white,
+                borderRadius: 20,
+                padding: 30,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: Colors.border.light,
+              }}
+            >
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  backgroundColor: Colors.primary[100],
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={32}
+                  color={Colors.primary[500]}
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: Colors.text.primary,
+                  marginBottom: 4,
+                }}
+              >
+                No Upcoming Appointments
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Colors.text.tertiary,
+                  textAlign: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                Book an appointment with a doctor today
+              </Text>
+              <View
+                style={{
+                  backgroundColor: Colors.primary[500],
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                }}
+              >
+                <Text style={{ color: Colors.white, fontWeight: '600' }}>
+                  Book Now
+                </Text>
+              </View>
+            </Pressable>
+          )}
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(300)}
+          style={{ marginTop: 24 }}
+        >
+          <HealthMetricsCard metrics={healthMetrics} />
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(400)}
+          style={{ marginTop: 24 }}
+        >
+          <RecentHistoryCard
+            consultations={recentConsultations}
+            onViewAll={() => router.push('/(tabs)/appointments')}
+          />
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
