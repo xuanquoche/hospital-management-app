@@ -1,15 +1,16 @@
 import { Colors } from '@/constants/colors';
 import {
-  Appointment,
   getAppointments,
   getDoctorName,
   getSpecialtyName,
+  getStatusConfig,
   getTimeSlot,
 } from '@/services/appointment';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -22,53 +23,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type TabType = 'upcoming' | 'completed' | 'cancelled';
 
-const getStatusConfig = (status?: string) => {
-  switch (status?.toUpperCase()) {
-    case 'CONFIRMED':
-      return {
-        label: 'Confirmed',
-        bgColor: Colors.secondary[100],
-        textColor: Colors.secondary[700],
-        icon: 'checkmark-circle' as const,
-      };
-    case 'PENDING':
-      return {
-        label: 'Pending',
-        bgColor: Colors.accent[100],
-        textColor: Colors.accent[700],
-        icon: 'time' as const,
-      };
-    case 'IN_PROGRESS':
-      return {
-        label: 'In Progress',
-        bgColor: Colors.primary[100],
-        textColor: Colors.primary[700],
-        icon: 'pulse' as const,
-      };
-    case 'COMPLETED':
-      return {
-        label: 'Completed',
-        bgColor: Colors.neutral[100],
-        textColor: Colors.neutral[600],
-        icon: 'checkmark-done' as const,
-      };
-    case 'CANCELLED':
-      return {
-        label: 'Cancelled',
-        bgColor: '#FEE2E2',
-        textColor: Colors.error,
-        icon: 'close-circle' as const,
-      };
-    default:
-      return {
-        label: status || 'Unknown',
-        bgColor: Colors.neutral[100],
-        textColor: Colors.neutral[600],
-        icon: 'help-circle' as const,
-      };
-  }
-};
-
 export default function AppointmentsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -79,7 +33,7 @@ export default function AppointmentsScreen() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const data = await getAppointments();
+      const { data } = await getAppointments({ limit: 100 });
       setAppointments(data || []);
     } catch (e) {
       console.error(e);
@@ -89,15 +43,17 @@ export default function AppointmentsScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAppointments();
+    }, [])
+  );
 
   const filteredAppointments = useMemo(() => {
     const now = new Date();
     return appointments.filter((apt) => {
       const aptDate = new Date(apt.appointmentDate);
-      const status = apt.status?.toUpperCase();
+      const status = apt.status?.toUpperCase() as AppointmentStatus;
       switch (activeTab) {
         case 'upcoming':
           return aptDate >= now && status !== 'CANCELLED' && status !== 'COMPLETED';
@@ -127,6 +83,7 @@ export default function AppointmentsScreen() {
     return (
       <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
         <Pressable
+          onPress={() => router.push(`/appointment/${item.id}`)}
           style={{
             backgroundColor: Colors.white,
             borderRadius: 20,
@@ -170,8 +127,6 @@ export default function AppointmentsScreen() {
             </View>
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
                 backgroundColor: statusConfig.bgColor,
                 paddingHorizontal: 10,
                 paddingVertical: 6,
@@ -179,17 +134,11 @@ export default function AppointmentsScreen() {
                 alignSelf: 'flex-start',
               }}
             >
-              <Ionicons
-                name={statusConfig.icon}
-                size={14}
-                color={statusConfig.textColor}
-                style={{ marginRight: 4 }}
-              />
               <Text
                 style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: statusConfig.textColor,
+                  color: statusConfig.color,
                 }}
               >
                 {statusConfig.label}
@@ -241,54 +190,52 @@ export default function AppointmentsScreen() {
             </View>
           </View>
 
-          {activeTab === 'upcoming' && (
-            <View
-              style={{
-                flexDirection: 'row',
-                marginTop: 14,
-                gap: 10,
-              }}
-            >
-              <Pressable
+          <View
+            style={{
+              flexDirection: 'row',
+              marginTop: 14,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons
+                name={
+                  item.examinationType === 'IN_PERSON'
+                    ? 'business-outline'
+                    : 'videocam-outline'
+                }
+                size={14}
+                color={Colors.text.tertiary}
+              />
+              <Text
                 style={{
-                  flex: 1,
-                  backgroundColor: Colors.primary[50],
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
+                  marginLeft: 6,
+                  fontSize: 12,
+                  color: Colors.text.tertiary,
                 }}
               >
-                <Text
-                  style={{
-                    color: Colors.primary[600],
-                    fontWeight: '600',
-                    fontSize: 13,
-                  }}
-                >
-                  View Details
-                </Text>
-              </Pressable>
-              <Pressable
-                style={{
-                  flex: 1,
-                  backgroundColor: '#FEE2E2',
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: Colors.error,
-                    fontWeight: '600',
-                    fontSize: 13,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </Pressable>
+                {item.examinationType === 'IN_PERSON' ? 'In-Person' : 'Online'}
+              </Text>
             </View>
-          )}
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: Colors.primary[600],
+                  fontWeight: '600',
+                }}
+              >
+                View Details
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={Colors.primary[600]}
+                style={{ marginLeft: 4 }}
+              />
+            </View>
+          </View>
         </Pressable>
       </Animated.View>
     );

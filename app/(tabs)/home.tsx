@@ -3,9 +3,10 @@ import { HealthMetricsCard } from '@/components/dashboard/HealthMetricsCard';
 import { QuickActionCard } from '@/components/dashboard/QuickActionCard';
 import { RecentHistoryCard } from '@/components/dashboard/RecentHistoryCard';
 import { Colors } from '@/constants/colors';
-import { Appointment, getAppointments } from '@/services/appointment';
+import { getAppointments } from '@/services/appointment';
 import { getHealthMetrics, getRecentConsultations } from '@/services/patient';
 import { useAuthStore } from '@/store/authStore';
+import { Appointment } from '@/types/appointment';
 import { Consultation, HealthMetrics } from '@/types/patient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,15 +35,16 @@ export default function HomeScreen() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [appointments, metrics, consultations] = await Promise.all([
-        getAppointments().catch(() => []),
+      const [appointmentsResult, metrics, consultations] = await Promise.all([
+        getAppointments().catch(() => ({ data: [], total: 0 })),
         getHealthMetrics().catch(() => ({})),
         getRecentConsultations(3).catch(() => []),
         fetchUserProfile().catch(() => {}),
       ]);
 
       const now = new Date();
-      const futureAppointments = (appointments || []).filter(
+      const appointments = appointmentsResult?.data || [];
+      const futureAppointments = appointments.filter(
         (a) => new Date(a.appointmentDate) >= now && a.status !== 'CANCELLED'
       );
       futureAppointments.sort(
