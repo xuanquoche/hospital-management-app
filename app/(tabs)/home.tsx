@@ -201,8 +201,8 @@ export default function HomeScreen() {
       </LinearGradient>
 
       <ScrollView
-        style={{ flex: 1, marginTop: -50 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        style={{ flex: 1, marginTop: -10 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100, paddingTop: 20 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}

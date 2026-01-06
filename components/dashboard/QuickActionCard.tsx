@@ -54,7 +54,8 @@ export const QuickActionCard: React.FC<QuickActionCardProps> = ({
         style={{
           borderRadius: 20,
           padding: 16,
-          minHeight: 100,
+          aspectRatio: 1,
+          justifyContent: 'space-between',
           shadowColor: colors[0],
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
@@ -70,31 +71,34 @@ export const QuickActionCard: React.FC<QuickActionCardProps> = ({
             backgroundColor: 'rgba(255,255,255,0.25)',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: 12,
           }}
         >
           <Ionicons name={icon} size={24} color={Colors.white} />
         </View>
-        <Text
-          style={{
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: '700',
-          }}
-        >
-          {title}
-        </Text>
-        {subtitle && (
+        <View>
           <Text
             style={{
-              color: 'rgba(255,255,255,0.8)',
-              fontSize: 12,
-              marginTop: 2,
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: '700',
             }}
+            numberOfLines={2}
           >
-            {subtitle}
+            {title}
           </Text>
-        )}
+          {subtitle && (
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: 12,
+                marginTop: 2,
+              }}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </Text>
+          )}
+        </View>
       </LinearGradient>
     </AnimatedPressable>
   );
